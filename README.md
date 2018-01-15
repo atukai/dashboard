@@ -1,1 +1,1 @@
-# dashboard
+# Gridly - PHP Grid Manager

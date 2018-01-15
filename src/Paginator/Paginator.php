@@ -1,18 +1,14 @@
 <?php
 
-namespace Dashboard\Paginator;
+namespace Gridly\Paginator;
 
 interface Paginator
 {
-    /**
-     * @param int $page
-     * @return Paginator
-     */
-    public function setItemsPerPage(int $page = 10): Paginator;
+    public function setItemsPerPage(int $count): Paginator;
 
-    /**
-     * @param int $page
-     * @return iterable
-     */
-    public function getPageItems(int $page = 1): iterable;
+    public function getPageItems(int $page): iterable;
+
+    public function getCurrentPage(): int;
+
+    public function getTotalPages(): int;
 }

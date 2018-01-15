@@ -1,41 +1,81 @@
 <?php
 
-namespace Dashboard;
+namespace Gridly;
 
-use Dashboard\Paginator\Paginator;
-use Dashboard\Source\AbstractSource;
+use Gridly\Column\DecoratorPipeline;
+use Gridly\Paginator\Paginator;
+use Gridly\Schema\Schema;
+use Gridly\Source\Source;
 
 class Grid
 {
-    /** @var AbstractSource */
+    /** @var Source  */
     private $source;
 
-    /** @var Paginator */
+    /** @var Schema */
+    private $schema;
+    
+    /** @var Paginator  */
     private $paginator;
-
+    
+    /** @var array  */
+    private $columnDecorators;
+    
     /**
-     * @param AbstractSource $source
+     * @param Source $source
+     * @param Schema $schema
      * @param Paginator $paginator
      */
-    public function __construct(AbstractSource $source, Paginator $paginator)
+    public function __construct(Source $source, Schema $schema, Paginator $paginator)
     {
         $this->source = $source;
+        $this->schema = $schema;
         $this->paginator = $paginator;
+        $this->columnDecorators = [];
     }
-
+    
     /**
-     * @param int|null $page
+     * @param int|null   $page
      * @param array|null $hiddenColumns
      * @return ResultSet
      */
     public function getPageItems(?int $page = 1, ?array $hiddenColumns = []): ResultSet
     {
-        return new ResultSet(
-            $this->paginator->getPageItems($page),
-            $hiddenColumns
-        );
+        $source = clone $this->source;
+        $this->source->applySchema($this->schema);
+
+        $result = (new ResultSet($this->paginator))->fetch($page, $hiddenColumns, $this->columnDecorators);
+        $this->source = $source;
+        
+        return $result;
+    }
+    
+    /**
+     * @param string   $columnName
+     * @param callable $decorator
+     * @return Grid
+     */
+    public function addColumnDecorator(string $columnName, callable $decorator): self
+    {
+        if (!isset($this->columnDecorators[$columnName])) {
+            $this->columnDecorators[$columnName] = new DecoratorPipeline();
+        }
+
+        /** @var DecoratorPipeline $pipeline */
+        $pipeline = $this->columnDecorators[$columnName];
+        $pipeline->pipe($decorator);
+
+        return $this;
     }
 
+    /**
+     * @return int
+     */
+    public function getTotalPages(): int
+    {
+        return $this->paginator->getTotalPages();
+    }
+    
     /**
      * @return int
      */

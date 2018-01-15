@@ -1,8 +1,13 @@
 <?php
 
-namespace Dashboard\Source;
+namespace Gridly\Source;
 
-class Pdo extends AbstractSource
+use Gridly\Schema;
+use Gridly\Source\Filter\Exception;
+use Gridly\Source\Filter\Filter;
+use PDOStatement;
+
+class Pdo implements Source
 {
     /** @var \PDO  */
     private $pdo;
@@ -10,6 +15,12 @@ class Pdo extends AbstractSource
     /** @var string  */
     private $tableName;
 
+    /** @var string  */
+    private $query;
+
+    /** @var array  */
+    private $queryParams;
+    
     /**
      * @param \PDO $pdo
      * @param string $tableName
@@ -17,24 +28,84 @@ class Pdo extends AbstractSource
     public function __construct(\PDO $pdo, string $tableName)
     {
         $this->pdo = $pdo;
-        $this->tableName = $tableName;
+        $this->tableName = '`' . str_replace('`', '``', $tableName) . '`';
+        $this->query = 'SELECT * FROM ' . $this->tableName;
+        $this->queryParams = [];
+    }
+    
+    public function applySchema(Schema\Schema $schema): void
+    {
+        $this->filter($schema->getFilters());
+        
+        $order = $schema->getOrder();
+        $this->sort($order->getColumnName(), $order->getDirection());
+    }
+    
+    /**
+     * @param Filter[] $filters
+     * @return Source
+     * @throws Exception
+     */
+    public function filter(iterable $filters = []): Source
+    {
+        if (empty($filters)) {
+            return $this;
+        }
+
+        $this->query .= ' WHERE ';
+
+        $filtersAmount = count($filters);
+        $lastFilterIndex = $filtersAmount - 1;
+
+        /** @var Filter $filter */
+        foreach ($filters as $i => $filter) {
+            switch ($filter->getOperand()) {
+                case Filter::OP_EQUAL:
+                    $this->query .= $filter->getColumnName() . ' = ?';
+                    $this->queryParams[] = $filter->getValue();
+                    break;
+                    
+                case Filter::OP_LESS:
+                    $this->query .= $filter->getColumnName() . ' < ?';
+                    $this->queryParams[] = $filter->getValue();
+                    break;
+                    
+                case Filter::OP_LIKE:
+                    $this->query .= $filter->getColumnName() . ' LIKE ?';
+                    $this->queryParams[] = '%' . $filter->getValue() . '%';
+                    break;
+                    
+                default:
+                    Exception::onUnsupportedFilterOperand($filter->getOperand(), self::class);
+            }
+
+            if ($filtersAmount > 1 && $i !== $lastFilterIndex) {
+                $this->query .= ' AND ';
+            }
+        }
+        
+        return $this;
     }
 
-    /**
-     * @param int $offset
-     * @param int $itemCountPerPage
-     * @return iterable
-     */
-    public function getItems($offset, $itemCountPerPage): iterable
+    public function sort(string $columnName, string $direction): Source
     {
-        $query = 'SELECT * FROM `' . $this->tableName . '`';
+        return $this;
+    }
 
-        $limitStatement = 'LIMIT ';
-        $limitStatement .= $offset . ', ' . $itemCountPerPage;
+    public function getItems(int $offset, int $limit): iterable
+    {
+        $query = $this->query;
+        
+        $limitStatement = ' LIMIT ';
+        $limitStatement .= $offset . ', ' . $limit;
 
-        $query = $query . $limitStatement;
+        $query .= $limitStatement;
 
-        return $this->pdo->query($query)->fetchAll();
+        /** @var PDOStatement $stmt */
+        $stmt = $this->pdo->prepare($query);
+        $stmt->execute($this->queryParams);
+
+        return $stmt->fetchAll(\PDO::FETCH_ASSOC);
     }
 
     /**
@@ -42,30 +113,7 @@ class Pdo extends AbstractSource
      */
     public function count(): int
     {
-        $query = 'SELECT COUNT(*) FROM `' . $this->tableName . '`';
+        $query = 'SELECT COUNT(*) FROM ' . $this->tableName;
         return $this->pdo->query($query)->fetchColumn();
-    }
-
-    /**
-     * Returns the number of results.
-     *
-     * @return integer The number of results.
-     */
-    public function getNbResults()
-    {
-        return $this->count();
-    }
-
-    /**
-     * Returns an slice of the results.
-     *
-     * @param integer $offset The offset.
-     * @param integer $length The length.
-     *
-     * @return array|\Traversable The slice.
-     */
-    public function getSlice($offset, $length)
-    {
-        return $this->getItems($offset, $length);
     }
 }

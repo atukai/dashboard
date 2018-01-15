@@ -1,7 +1,8 @@
 {
-    "name": "atukai/dashboard-grid",
-    "description": "Rapid admin panel builder",
-    "homepage": "https://github.com/atukai/dashboard",
+    "name": "atukai/gridly",
+    "license": "",
+    "description": "Gridly - PHP Grid Manager",
+    "homepage": "https://github.com/atukai/gridly",
     "authors": [
         {
             "name": "Alexander Tukai",
@@ -9,22 +10,27 @@
         }
     ],
     "require": {
-        "php": "^7.1",
-        "zendframework/zend-paginator": "^2.8",
-        "pagerfanta/pagerfanta": "^1.0"
+        "php": "^7.3",
+        "symfony/console": "^5.2",
+        "symfony/config": "^5.2",
+        "symfony/yaml": "^5.2",
+        "laminas/laminas-paginator": "^2.9",
+        "pagerfanta/pagerfanta": "^2.5",
+        "doctrine/dbal": "^2.12",
+        "doctrine/collections": "^1.6",
+        "ext-pdo": "*"
     },
     "require-dev": {
-        "phpunit/phpunit": "*",
-        "squizlabs/php_codesniffer": "*"
+        "phpunit/phpunit": "8.*"
     },
     "autoload": {
         "psr-4": {
-            "Dashboard\\": "src/"
+            "Gridly\\": "src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "DashboardTest\\": "tests/Dashboard"
+            "GridlyTest\\": "tests/"
         }
     }
 }

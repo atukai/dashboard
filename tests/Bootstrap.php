@@ -4,7 +4,7 @@ ini_set('error_reporting', E_ALL);
 date_default_timezone_set('UTC');
 
 $files = [
-    realpath(__DIR__.'/../vendor/autoload.php'),
+    dirname(__DIR__) . '/vendor/autoload.php',
 ];
 
 foreach ($files as $file) {
